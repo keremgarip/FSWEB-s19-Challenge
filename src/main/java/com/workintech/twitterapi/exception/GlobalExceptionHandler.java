@@ -1,15 +1,21 @@
 package com.workintech.twitterapi.exception;
 
 import com.workintech.twitterapi.dto.ErrorResponse;
+
+import org.apache.catalina.connector.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.authentication.BadCredentialsException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -54,6 +60,14 @@ public class GlobalExceptionHandler {
                 "Validation failed",
                 errors
         );
+    }
+
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password", Map.of());
+    }
+
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), Map.of());
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(

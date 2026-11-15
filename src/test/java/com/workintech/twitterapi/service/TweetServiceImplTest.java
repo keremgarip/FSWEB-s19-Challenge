@@ -23,122 +23,171 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+
+import com.workintech.twitterapi.repository.CommentRepository;
+import com.workintech.twitterapi.repository.LikeRepository;
+import com.workintech.twitterapi.repository.RetweetRepository;
+
+import org.mockito.InOrder;
 
 @ExtendWith(MockitoExtension.class)
 class TweetServiceImplTest {
 
-    @Mock
-    private TweetRepository tweetRepository;
+        @Mock
+        private CommentRepository commentRepository;
 
-    @Mock
-    private UserRepository userRepository;
+        @Mock
+        private LikeRepository likeRepository;
 
-    @InjectMocks
-    private TweetServiceImpl tweetService;
+        @Mock
+        private RetweetRepository retweetRepository;
 
-    private User user;
-    private Tweet tweet;
+        @Mock
+        private TweetRepository tweetRepository;
 
-    @BeforeEach
-    void setUp() {
+        @Mock
+        private UserRepository userRepository;
 
-        user = new User();
-        user.setId(1L);
-        user.setUsername("testuser");
-        user.setEmail("testuser@example.com");
+        @InjectMocks
+        private TweetServiceImpl tweetService;
 
-        tweet = new Tweet();
-        tweet.setId(1L);
-        tweet.setContent("Original tweet");
-        tweet.setUser(user);
-    }
+        private User user;
+        private Tweet tweet;
 
-    @Test
-    void createTweet_shouldSaveTweetSuccessfully() {
+        @BeforeEach
+        void setUp() {
 
-        TweetRequest request = new TweetRequest("My first tweet!");
+                user = new User();
+                user.setId(1L);
+                user.setUsername("testuser");
+                user.setEmail("testuser@example.com");
 
-        when(userRepository.findByUsername("testuser"))
-                .thenReturn(Optional.of(user));
+                tweet = new Tweet();
+                tweet.setId(1L);
+                tweet.setContent("Original tweet");
+                tweet.setUser(user);
+        }
 
-        when(tweetRepository.saveAndFlush(any(Tweet.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        @Test
+        void createTweet_shouldSaveTweetSuccessfully() {
 
-        TweetResponse response =
-                tweetService.createTweet(request, "testuser");
+                TweetRequest request = new TweetRequest("My first tweet!");
 
-        assertEquals("My first tweet!", response.content());
-        assertEquals("testuser", response.username());
-        assertEquals(1L, response.userId());
+                when(userRepository.findByUsername("testuser"))
+                                .thenReturn(Optional.of(user));
 
-        verify(tweetRepository).saveAndFlush(any(Tweet.class));
-    }
+                when(tweetRepository.saveAndFlush(any(Tweet.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-    @Test
-    void updateTweet_shouldUpdateWhenUserIsOwner() {
+                TweetResponse response = tweetService.createTweet(request, "testuser");
 
-        TweetRequest request = new TweetRequest("Updated tweet");
+                assertEquals("My first tweet!", response.content());
+                assertEquals("testuser", response.username());
+                assertEquals(1L, response.userId());
 
-        when(tweetRepository.findById(1L))
-                .thenReturn(Optional.of(tweet));
+                verify(tweetRepository).saveAndFlush(any(Tweet.class));
+        }
 
-        when(tweetRepository.saveAndFlush(any(Tweet.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        @Test
+        void updateTweet_shouldUpdateWhenUserIsOwner() {
 
-        TweetResponse response =
-                tweetService.updateTweet(1L, request, "testuser");
+                TweetRequest request = new TweetRequest("Updated tweet");
 
-        assertEquals("Updated tweet", response.content());
+                when(tweetRepository.findById(1L))
+                                .thenReturn(Optional.of(tweet));
 
-        verify(tweetRepository).saveAndFlush(tweet);
-    }
+                when(tweetRepository.saveAndFlush(any(Tweet.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-    @Test
-    void updateTweet_shouldThrowExceptionWhenUserIsNotOwner() {
+                TweetResponse response = tweetService.updateTweet(1L, request, "testuser");
 
-        TweetRequest request = new TweetRequest("Unauthorized update");
+                assertEquals("Updated tweet", response.content());
 
-        when(tweetRepository.findById(1L))
-                .thenReturn(Optional.of(tweet));
+                verify(tweetRepository).saveAndFlush(tweet);
+        }
 
-        assertThrows(
-                AccessDeniedException.class,
-                () -> tweetService.updateTweet(
-                        1L,
-                        request,
-                        "anotheruser"
-                )
-        );
+        @Test
+        void updateTweet_shouldThrowExceptionWhenUserIsNotOwner() {
 
-        verify(tweetRepository, never())
-                .saveAndFlush(any(Tweet.class));
-    }
+                TweetRequest request = new TweetRequest("Unauthorized update");
 
-    @Test
-    void deleteTweet_shouldThrowExceptionWhenUserIsNotOwner() {
+                when(tweetRepository.findById(1L))
+                                .thenReturn(Optional.of(tweet));
 
-        when(tweetRepository.findById(1L))
-                .thenReturn(Optional.of(tweet));
+                assertThrows(
+                                AccessDeniedException.class,
+                                () -> tweetService.updateTweet(
+                                                1L,
+                                                request,
+                                                "anotheruser"));
 
-        assertThrows(
-                AccessDeniedException.class,
-                () -> tweetService.deleteTweet(1L, "anotheruser")
-        );
+                verify(tweetRepository, never())
+                                .saveAndFlush(any(Tweet.class));
+        }
 
-        verify(tweetRepository, never())
-                .delete(any(Tweet.class));
-    }
+        @Test
+        void deleteTweet_shouldThrowExceptionWhenUserIsNotOwner() {
 
-    @Test
-    void findById_shouldThrowExceptionWhenTweetDoesNotExist() {
+                when(tweetRepository.findById(1L))
+                                .thenReturn(Optional.of(tweet));
 
-        when(tweetRepository.findById(99L))
-                .thenReturn(Optional.empty());
+                assertThrows(
+                                AccessDeniedException.class,
+                                () -> tweetService.deleteTweet(1L, "anotheruser"));
 
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> tweetService.findById(99L)
-        );
-    }
+                verify(commentRepository, never())
+                                .deleteAllByTweetId(anyLong());
+
+                verify(likeRepository, never())
+                                .deleteAllByTweetId(anyLong());
+
+                verify(retweetRepository, never())
+                                .deleteAllByTweetId(anyLong());
+
+                verify(tweetRepository, never())
+                                .delete(any(Tweet.class));
+        }
+
+        @Test
+        void findById_shouldThrowExceptionWhenTweetDoesNotExist() {
+
+                when(tweetRepository.findById(99L))
+                                .thenReturn(Optional.empty());
+
+                assertThrows(
+                                ResourceNotFoundException.class,
+                                () -> tweetService.findById(99L));
+        }
+
+        @Test
+        void deleteTweet_shouldDeleteTweetAndRelatedRecords() {
+
+                when(tweetRepository.findById(1L))
+                                .thenReturn(Optional.of(tweet));
+
+                tweetService.deleteTweet(1L, "testuser");
+
+                InOrder inOrder = inOrder(
+                                commentRepository,
+                                likeRepository,
+                                retweetRepository,
+                                tweetRepository);
+
+                inOrder.verify(commentRepository)
+                                .deleteAllByTweetId(1L);
+
+                inOrder.verify(likeRepository)
+                                .deleteAllByTweetId(1L);
+
+                inOrder.verify(retweetRepository)
+                                .deleteAllByTweetId(1L);
+
+                inOrder.verify(tweetRepository)
+                                .delete(tweet);
+
+                inOrder.verify(tweetRepository)
+                                .flush();
+        }
 }

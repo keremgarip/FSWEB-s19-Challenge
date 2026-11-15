@@ -13,6 +13,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.workintech.twitterapi.repository.CommentRepository;
+import com.workintech.twitterapi.repository.LikeRepository;
+import com.workintech.twitterapi.repository.RetweetRepository;
+
 import java.util.List;
 
 @Service
@@ -20,13 +24,22 @@ public class TweetServiceImpl implements TweetService {
 
     private final TweetRepository tweetRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    private final LikeRepository likeRepository;
+    private final RetweetRepository retweetRepository;
 
     public TweetServiceImpl(
             TweetRepository tweetRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            CommentRepository commentRepository,
+            LikeRepository likeRepository,
+            RetweetRepository retweetRepository) {
 
         this.tweetRepository = tweetRepository;
         this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
+        this.likeRepository = likeRepository;
+        this.retweetRepository = retweetRepository;
     }
 
     @Override
@@ -95,6 +108,10 @@ public class TweetServiceImpl implements TweetService {
 
         validateOwnership(tweet, username);
 
+        commentRepository.deleteAllByTweetId(id);
+        likeRepository.deleteAllByTweetId(id);
+        retweetRepository.deleteAllByTweetId(id);
+
         tweetRepository.delete(tweet);
         tweetRepository.flush();
     }
@@ -102,21 +119,15 @@ public class TweetServiceImpl implements TweetService {
     private Tweet findTweetById(Long id) {
 
         return tweetRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Tweet not found"
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Tweet not found"));
     }
 
     private User findUserByUsername(String username) {
 
         return userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found"));
     }
 
     private void validateOwnership(
@@ -125,8 +136,7 @@ public class TweetServiceImpl implements TweetService {
 
         if (!tweet.getUser().getUsername().equals(username)) {
             throw new AccessDeniedException(
-                    "You can only modify your own tweets"
-            );
+                    "You can only modify your own tweets");
         }
     }
 
@@ -138,7 +148,6 @@ public class TweetServiceImpl implements TweetService {
                 tweet.getUser().getId(),
                 tweet.getUser().getUsername(),
                 tweet.getCreatedAt(),
-                tweet.getUpdatedAt()
-        );
+                tweet.getUpdatedAt());
     }
 }
